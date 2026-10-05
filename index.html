@@ -92,6 +92,8 @@ h2{font-size:17px;margin:20px 16px 10px}
 .all{background:#f3f6ff;border-radius:14px;padding:10px 12px;margin:0 0 10px;font-size:13px;color:var(--tx2)}.all b{color:var(--pr);font-size:16px}
 .toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top));transform:translateX(-50%);background:#1d2340;color:#fff;padding:12px 18px;border-radius:14px;z-index:40;font-size:14px;max-width:90%;display:none}
 .toast.err{background:var(--bad)}.toast.ok{background:var(--ok)}
+
+.backend-status{display:inline-flex;align-items:center;margin-top:8px;font-size:12px;font-weight:700;opacity:.95}.backend-status.ok{color:#b9ffd0}.backend-status.bad{color:#ffd0d0}.backend-status.loading{color:#fff2b2}
 </style>
 </head>
 <body>
@@ -274,11 +276,12 @@ function normalizeMaterialName(nama) {
 
     const MATERIAL_CATEGORIES = ['SEMUA', 'INNER', 'KARDUS', 'POUCH', 'LABEL', 'JERIGEN', 'STICKER', 'LAKBAN', 'BADAN LB', 'TUTUP LB', 'TUTUP JERIGEN', 'LAINNYA'];
     
-const SCRIPT_URL='https://script.google.com/macros/s/AKfycbz_4DEl5Fts78aQ-k1x6BZ9AUPoU09DU2A6GfKQvwEwY65qNyLzbqzOfQX7arTyoElCeA/exec';
+const DEFAULT_SCRIPT_URL='https://script.google.com/macros/s/AKfycbz_4DEl5Fts78aQ-k1x6BZ9AUPoU09DU2A6GfKQvwEwY65qNyLzbqzOfQX7arTyoElCeA/exec';
+const SCRIPT_URL=(localStorage.getItem('stock_opname_script_url')||DEFAULT_SCRIPT_URL).trim();
 const S_KEY='opname_v2';
 const ICONS=['📦','🧴','🏷️','🛢️','🧰','🧾'],TINTS=['#fff0d6','#dff0ff','#e2f6e9','#f2e5fb','#ffe3e3','#e6f7f7'];
 const today=()=>{const d=new Date();return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
-const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const $=id=>document.getElementById(id);
 let st;try{st=JSON.parse(localStorage.getItem(S_KEY))}catch{}
 st=st||{nama:'',tanggal:today(),items:{}};st.shift=st.shift||'1';st.custom=st.custom||{};
@@ -291,39 +294,20 @@ const mk_=it=>it&&it.m?it.m.reduce((a,b)=>a+b,0):0;
 function addMat(a,nama,satuan){if(!AREA_CONFIG[a])return;const k=cleanMaterialName(nama);if(AREA_CONFIG[a].some(x=>cleanMaterialName(x.nama)===k))return;AREA_CONFIG[a].push({nama,satuan,baru:1})}
 Object.entries(st.custom).forEach(([a,l])=>l.forEach(x=>addMat(a,x.nama,x.satuan)));
 let LAST={};try{LAST=JSON.parse(localStorage.getItem('opname_last'))||{}}catch{}
-
-// =====================================================
-// GOOGLE DRIVE JSON DATABASE
-// =====================================================
-let DRIVE_STATUS='offline';
-function setDriveStatus(status){
-  DRIVE_STATUS=status;
-  const el=document.getElementById('drive-status');
-  if(!el)return;
-  const map={online:['🟢','Drive siap'],saving:['🟡','Menyimpan…'],offline:['⚪','Belum terhubung'],error:['🔴','Drive error']};
-  const x=map[status]||map.offline;
-  el.innerHTML=`${x[0]} ${x[1]}`;
+async function apiGet(action, params={}){
+ const u=new URL(SCRIPT_URL);u.searchParams.set('action',action);Object.entries(params).forEach(([k,v])=>{if(v!==''&&v!=null)u.searchParams.set(k,v)});
+ const r=await fetch(u.toString(),{method:'GET',cache:'no-store'});
+ if(!r.ok) throw new Error('HTTP '+r.status);
+ const j=await r.json();
+ if(j.status && j.status!=='ok') throw new Error(j.message||'API error');
+ return j;
 }
-function syncRemote(){
-  const u=SCRIPT_URL.trim();
-  if(!u)return;
-  fetch(u+'?action=last').then(r=>r.json()).then(j=>{if(j.last){LAST=j.last;try{localStorage.setItem('opname_last',JSON.stringify(LAST))}catch{}}setDriveStatus('online')}).catch(()=>{});
-  fetch(u+'?action=materials').then(r=>r.json()).then(j=>{(j.materials||[]).forEach(x=>addMat(x.area,x.nama,x.satuan));if(view!=='area')render()}).catch(()=>{});
+async function checkBackend(){
+ const el=$('backendStatus');if(!el)return;
+ el.textContent='● Menghubungkan...';el.className='backend-status loading';
+ try{const j=await apiGet('health');el.textContent='● Drive terhubung';el.className='backend-status ok';return j}
+ catch(e){el.textContent='● Drive belum terhubung';el.className='backend-status bad';return null}
 }
-async function saveOpnameToDrive(data){
-  setDriveStatus('saving');
-  const response=await fetch(SCRIPT_URL.trim(),{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({action:'saveOpname',data:data})
-  });
-  if(!response.ok)throw new Error('HTTP '+response.status);
-  const result=await response.json();
-  if(result.status!=='ok')throw new Error(result.msg||'Google Drive menolak penyimpanan');
-  setDriveStatus('online');
-  return result;
-}
-
 const fmt=n=>Math.round(n*100)/100;
 const done=(a,m)=>{const it=st.items[fld(a,m)];return !!(it&&it.c)};
 const cnt=a=>AREA_CONFIG[a].filter(m=>done(a,m)).length;
@@ -337,27 +321,54 @@ function show(v){view=v;document.querySelectorAll('.view').forEach(e=>e.classLis
 function go(v){show(v);scrollTo(0,0);render()}
 function render(){({home:rHome,area:rArea,rekap:rRekap,review:rReview})[view]()}
 document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>go(b.dataset.v));
-/* ===== Rekap ===== */
+/* ===== Rekap: total per material dari semua lokasi, live ===== */
 function locsOf(nama){const k=cleanMaterialName(nama),o=[];AREAS.forEach(a=>AREA_CONFIG[a].forEach((x,i)=>{if(cleanMaterialName(x.nama)===k){const f=fld(a,x),it=st.items[f],c=!!(it&&it.c),L=LAST[f],aw=L?L.v:null,v=c?tot(it):0;o.push({a,i,c,v,x:c?(it.x||0):0,aw,mk:mk_(it),tp:c&&aw!==null?aw+mk_(it)-v:null})}}));return o}
 function agg(){const m=new Map();AREAS.forEach(a=>AREA_CONFIG[a].forEach(x=>{const k=cleanMaterialName(x.nama);if(!m.has(k)){const l=locsOf(x.nama);m.set(k,{nama:x.nama,satuan:x.satuan,cat:getMaterialCategory(x.nama),locs:l,total:l.reduce((s,y)=>s+y.v,0),rusak:l.reduce((s,y)=>s+y.x,0),tp:l.reduce((s,y)=>s+(y.tp||0),0),tpn:l.filter(y=>y.tp!==null).length,mk:l.reduce((s,y)=>s+y.mk,0),n:l.filter(y=>y.c).length})}}));return [...m.values()]}
 let rq='',rs='all',rc='SEMUA';
 const stat=g=>g.n===0?'todo':g.n===g.locs.length?'full':'part';
 function rRekap(){
- const G=agg(),inp=G.filter(g=>g.n>0).length,full=G.filter(g=>stat(g)==='full').length,sat={};G.forEach(g=>{sat[g.satuan]=(sat[g.satuan]||0)+g.total});
+ const G=agg(),inp=G.filter(g=>g.n>0).length,full=G.filter(g=>stat(g)==='full').length,sat={};
+ G.forEach(g=>{sat[g.satuan]=(sat[g.satuan]||0)+g.total});
  const sf=[['all','Semua'],['full','✓ Lengkap'],['part','◐ Sebagian'],['todo','⏳ Belum']];
- $('v-rekap').innerHTML=`<div class="top bl"><h1 style="margin:0;font-size:22px">Rekap Stok</h1><p>Total semua lokasi · update langsung saat input</p></div><div class="sum"><div><small>Material diinput</small><b>${inp}/${G.length}</b></div><div><small>Lengkap semua lokasi</small><b>${full}/${G.length}</b></div>${Object.keys(sat).map(s=>`<div><small>Total stok (${s})</small><b>${fmt(sat[s]).toLocaleString('id-ID')}</b></div>`).join('')}</div><div style="padding:14px 16px 0"><input class="search" style="background:#fff;box-shadow:var(--sh);margin:0" id="rqs" placeholder="🔍 Cari material..." value="${esc(rq)}"></div><div class="chips">${sf.map(([k,l])=>`<button class="chip ${rs===k?'on':''}" data-s="${k}">${l}</button>`).join('')}</div><div class="chips" style="padding-top:0">${MATERIAL_CATEGORIES.map(c=>`<button class="chip ${rc===c?'on':''}" data-c="${c}">${c}</button>`).join('')}</div><div class="list" id="rl"></div>`;
- $('rqs').oninput=e=>{rq=e.target.value.toLowerCase();fillRekap(G)};document.querySelectorAll('#v-rekap .chip[data-s]').forEach(b=>b.onclick=()=>{rs=b.dataset.s;rRekap()});document.querySelectorAll('#v-rekap .chip[data-c]').forEach(b=>b.onclick=()=>{rc=b.dataset.c;rRekap()});fillRekap(G);
+ $('v-rekap').innerHTML=`<div class="top bl"><h1 style="margin:0;font-size:22px">Rekap Stok</h1><p>Total semua lokasi · update langsung saat input</p></div>
+ <div class="sum"><div><small>Material diinput</small><b>${inp}/${G.length}</b></div><div><small>Lengkap semua lokasi</small><b>${full}/${G.length}</b></div>${Object.keys(sat).map(s=>`<div><small>Total stok (${s})</small><b>${fmt(sat[s]).toLocaleString('id-ID')}</b></div>`).join('')}</div>
+ <div style="padding:14px 16px 0"><input class="search" style="background:#fff;box-shadow:var(--sh);margin:0" id="rqs" placeholder="🔍 Cari material..." value="${esc(rq)}"></div>
+ <div class="chips">${sf.map(([k,l])=>`<button class="chip ${rs===k?'on':''}" data-s="${k}">${l}</button>`).join('')}</div>
+ <div class="chips" style="padding-top:0">${MATERIAL_CATEGORIES.map(c=>`<button class="chip ${rc===c?'on':''}" data-c="${c}">${c}</button>`).join('')}</div>
+ <div class="list" id="rl"></div>`;
+ $('rqs').oninput=e=>{rq=e.target.value.toLowerCase();fillRekap(G)};
+ document.querySelectorAll('#v-rekap .chip[data-s]').forEach(b=>b.onclick=()=>{rs=b.dataset.s;rRekap()});
+ document.querySelectorAll('#v-rekap .chip[data-c]').forEach(b=>b.onclick=()=>{rc=b.dataset.c;rRekap()});
+ fillRekap(G);
 }
-function fillRekap(G){const L=G.filter(g=>(rs==='all'||stat(g)===rs)&&(rc==='SEMUA'||g.cat===rc)&&(!rq||g.nama.toLowerCase().includes(rq)));$('rl').innerHTML=L.length?L.map(g=>`<div class="rk ${stat(g)}"><div class="rk-h"><div class="nm">${esc(g.nama)}<small>${g.satuan} · ${g.n}/${g.locs.length} lokasi dihitung${g.tpn?` · terpakai ${fmt(g.tp)}`:''}${g.mk?` · masuk ${fmt(g.mk)}`:''}${g.rusak?` · rusak ${fmt(g.rusak)}`:''}</small></div><div class="qty">${g.n?fmt(g.total).toLocaleString('id-ID'):'—'}<small>${g.n?'TOTAL '+g.satuan:'belum'}</small></div></div><div class="locs">${g.locs.map(l=>`<button class="loc ${l.c?'':'no'}" data-a="${esc(l.a)}" data-i="${l.i}">${esc(l.a)}: ${l.c?fmt(l.v):'belum'}</button>`).join('')}</div></div>`).join(''):'<div class="empty">Tidak ada material</div>';document.querySelectorAll('#rl .loc').forEach(b=>b.onclick=()=>{curArea=b.dataset.a;openSheet(+b.dataset.i)});}
+function fillRekap(G){
+ const L=G.filter(g=>(rs==='all'||stat(g)===rs)&&(rc==='SEMUA'||g.cat===rc)&&(!rq||g.nama.toLowerCase().includes(rq)));
+ $('rl').innerHTML=L.length?L.map(g=>`<div class="rk ${stat(g)}"><div class="rk-h"><div class="nm">${esc(g.nama)}<small>${g.satuan} · ${g.n}/${g.locs.length} lokasi dihitung${g.tpn?` · terpakai ${fmt(g.tp)}`:''}${g.mk?` · masuk ${fmt(g.mk)}`:''}${g.rusak?` · rusak ${fmt(g.rusak)}`:''}</small></div><div class="qty">${g.n?fmt(g.total).toLocaleString('id-ID'):'—'}<small>${g.n?'TOTAL '+g.satuan:'belum'}</small></div></div><div class="locs">${g.locs.map(l=>`<button class="loc ${l.c?'':'no'}" data-a="${esc(l.a)}" data-i="${l.i}">${esc(l.a)}: ${l.c?fmt(l.v):'belum'}</button>`).join('')}</div></div>`).join(''):'<div class="empty">Tidak ada material</div>';
+ document.querySelectorAll('#rl .loc').forEach(b=>b.onclick=()=>{curArea=b.dataset.a;openSheet(+b.dataset.i)});
+}
 function rHome(){
  const T=totalAll(),D=doneAll();
- $('v-home').innerHTML=`<div class="hero"><div class="hero-row"><div><h1>Opname Material</h1><p>Hitung stok langsung di lapangan</p><div id="drive-status" style="margin-top:8px;font-size:12px;opacity:.9">⚪ Belum terhubung</div></div>${ring(T?D/T:0,64,'#ffb74d')}</div></div><div class="who"><div><label>Nama pelaksana</label><input id="inNama" value="${esc(st.nama)}" placeholder="Nama Anda"></div><div><label>Tanggal</label><input id="inTgl" type="date" value="${st.tanggal}"></div><div style="grid-column:span 2"><label>Shift opname</label><select id="inSh" style="width:100%;border:1.5px solid var(--bd);border-radius:12px;padding:10px;background:#fafbff">${[1,2,3].map(s=>`<option ${st.shift==s?'selected':''}>${s}</option>`).join('')}</select></div></div><div class="stats"><div class="stat"><b style="color:var(--ok)">${D}</b><span>Dihitung</span></div><div class="stat"><b style="color:var(--ac)">${T-D}</b><span>Belum</span></div><div class="stat"><b>${T}</b><span>Total item</span></div></div><h2>Area opname</h2><div class="grid">${AREAS.map((a,i)=>{const n=AREA_CONFIG[a].length,d=cnt(a);return `<button class="ac" data-a="${esc(a)}"><div class="ic" style="background:${TINTS[i%6]}">${ICONS[i%6]}</div><b>${esc(a)}</b><small>${d}/${n} item</small><div class="bar"><i style="width:${n?d/n*100:0}%"></i></div></button>`}).join('')}</div>`;
- $('inNama').oninput=e=>{st.nama=e.target.value;save()};$('inSh').onchange=e=>{st.shift=e.target.value;save()};$('inTgl').onchange=e=>{st.tanggal=e.target.value;save()};document.querySelectorAll('.ac').forEach(b=>b.onclick=()=>{curArea=b.dataset.a;cat='SEMUA';q='';todo=false;go('area')});setDriveStatus(DRIVE_STATUS);
+ $('v-home').innerHTML=`<div class="hero"><div class="hero-row"><div><h1>Opname Material</h1><p>Hitung stok langsung di lapangan</p><div id="backendStatus" class="backend-status loading">● Mengecek Drive...</div></div>${ring(T?D/T:0,64,'#ffb74d')}</div></div>
+ <div class="who"><div><label>Nama pelaksana</label><input id="inNama" value="${esc(st.nama)}" placeholder="Nama Anda"></div><div><label>Tanggal</label><input id="inTgl" type="date" value="${st.tanggal}"></div><div style="grid-column:span 2"><label>Shift opname</label><select id="inSh" style="width:100%;border:1.5px solid var(--bd);border-radius:12px;padding:10px;background:#fafbff">${[1,2,3].map(s=>`<option ${st.shift==s?'selected':''}>${s}</option>`).join('')}</select></div></div>
+ <div class="stats"><div class="stat"><b style="color:var(--ok)">${D}</b><span>Dihitung</span></div><div class="stat"><b style="color:var(--ac)">${T-D}</b><span>Belum</span></div><div class="stat"><b>${T}</b><span>Total item</span></div></div>
+ <div class="card" style="margin-top:14px"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><div><b>☁️ Penyimpanan</b><small style="display:block;color:var(--tx2);margin-top:4px">Google Drive JSON · data tetap tersimpan lokal sebagai backup</small></div><button class="btn2" id="testDrive" style="padding:9px 12px">Tes koneksi</button></div></div>
+ <h2>Area opname</h2><div class="grid">${AREAS.map((a,i)=>{const n=AREA_CONFIG[a].length,d=cnt(a);return `<button class="ac" data-a="${esc(a)}"><div class="ic" style="background:${TINTS[i%6]}">${ICONS[i%6]}</div><b>${esc(a)}</b><small>${d}/${n} item</small><div class="bar"><i style="width:${n?d/n*100:0}%"></i></div></button>`}).join('')}</div>
+`;
+ $('inNama').oninput=e=>{st.nama=e.target.value;save()};$('inSh').onchange=e=>{st.shift=e.target.value;save()};$('inTgl').onchange=e=>{st.tanggal=e.target.value;save()};
+ $('testDrive').onclick=async()=>{const j=await checkBackend();toast(j?'✅ Google Drive terhubung':'❌ Tidak dapat terhubung ke Apps Script',j?'ok':'err')};
+ document.querySelectorAll('.ac').forEach(b=>b.onclick=()=>{curArea=b.dataset.a;cat='SEMUA';q='';todo=false;go('area')});
 }
 function listIdx(){return AREA_CONFIG[curArea].map((m,i)=>i).filter(i=>{const m=AREA_CONFIG[curArea][i];return (cat==='SEMUA'||getMaterialCategory(m.nama)===cat)&&(!q||m.nama.toLowerCase().includes(q))&&(!todo||!done(curArea,m))})}
 function rArea(){
- const n=AREA_CONFIG[curArea].length,d=cnt(curArea);$('v-area').innerHTML=`<div class="top"><div class="top-row"><button class="back" id="bk1">←</button><h1>${esc(curArea)}</h1>${ring(n?d/n:0,52,'#fff')}</div><input class="search" id="qs" placeholder="🔍 Cari material..." value="${esc(q)}"></div><div class="chips">${['SEMUA',...MATERIAL_CATEGORIES.slice(1)].map(c=>`<button class="chip ${c===cat?'on':''}" data-c="${c}">${c}</button>`).join('')}<button class="chip ${todo?'on':''}" id="tdo">⏳ Belum dihitung</button><button class="chip" id="newMat" style="background:var(--ac);color:#fff">＋ Material baru</button></div><div class="list" id="lst"></div>`;
- $('bk1').onclick=()=>go('home');$('qs').oninput=e=>{q=e.target.value.toLowerCase();fillList()};document.querySelectorAll('.chip[data-c]').forEach(b=>b.onclick=()=>{cat=b.dataset.c;rArea()});$('tdo').onclick=()=>{todo=!todo;rArea()};$('newMat').onclick=openNew;fillList();
+ const n=AREA_CONFIG[curArea].length,d=cnt(curArea);
+ $('v-area').innerHTML=`<div class="top"><div class="top-row"><button class="back" id="bk1">←</button><h1>${esc(curArea)}</h1>${ring(n?d/n:0,52,'#fff')}</div><input class="search" id="qs" placeholder="🔍 Cari material..." value="${esc(q)}"></div>
+ <div class="chips">${['SEMUA',...MATERIAL_CATEGORIES.slice(1)].map(c=>`<button class="chip ${c===cat?'on':''}" data-c="${c}">${c}</button>`).join('')}<button class="chip ${todo?'on':''}" id="tdo">⏳ Belum dihitung</button><button class="chip" id="newMat" style="background:var(--ac);color:#fff">＋ Material baru</button></div>
+ <div class="list" id="lst"></div>`;
+ $('bk1').onclick=()=>go('home');
+ $('qs').oninput=e=>{q=e.target.value.toLowerCase();fillList()};
+ document.querySelectorAll('.chip[data-c]').forEach(b=>b.onclick=()=>{cat=b.dataset.c;rArea()});
+ $('tdo').onclick=()=>{todo=!todo;rArea()};$('newMat').onclick=openNew;
+ fillList();
 }
 function fillList(){
  const ids=listIdx();
@@ -402,32 +413,66 @@ function openNew(){
  $('ny').onclick=()=>{const nama=$('nn').value.trim().toUpperCase().replace(/\s+/g,' '),sat=$('ns').value,ar=[...document.querySelectorAll('.na:checked')].map(x=>x.value);
   if(!nama||!ar.length){toast('Isi nama & pilih minimal 1 area','err');return}
   ar.forEach(a=>{addMat(a,nama,sat);(st.custom[a]=st.custom[a]||[]).push({nama,satuan:sat})});save();
-  const fd=new FormData();fd.append('action','addMaterial');fd.append('nama',nama);fd.append('satuan',sat);fd.append('area',JSON.stringify(ar));
-  fetch(SCRIPT_URL.trim(),{method:'POST',body:fd}).catch(()=>{});toast('✅ Material ditambahkan','ok');closeSheet()};
+  toast('✅ Material ditambahkan di perangkat ini','ok');closeSheet()};
 }
 function closeSheet(){$('bk').classList.remove('on');$('sheet').classList.remove('on');if(view==='area'){fillList();const n=AREA_CONFIG[curArea].length;rAreaRing()}else render()}
 function rAreaRing(){const t=document.querySelector('#v-area .top-row .ring');if(t){const n=AREA_CONFIG[curArea].length;t.outerHTML=ring(n?cnt(curArea)/n:0,52,'#fff')}}
 $('bk').onclick=closeSheet;
 function rReview(){
  const T=totalAll(),D=doneAll();let rj=0;Object.values(st.items).forEach(it=>rj+=it.x||0);
- $('v-review').innerHTML=`<div class="top"><div class="top-row"><button class="back" id="bk2">←</button><h1>Review &amp; Kirim</h1></div></div><div class="stats"><div class="stat"><b style="color:var(--ok)">${D}</b><span>Dihitung</span></div><div class="stat"><b style="color:var(--bad)">${T-D}</b><span>Belum</span></div><div class="stat"><b>${fmt(rj)}</b><span>Total rusak</span></div></div>${AREAS.map(a=>{const un=AREA_CONFIG[a].map((m,i)=>[m,i]).filter(([m])=>!done(a,m));return `<div class="card"><h3><span>${esc(a)}</span><span>${cnt(a)}/${AREA_CONFIG[a].length}</span></h3>${un.length?`<details><summary style="color:var(--tx2);font-size:13px">${un.length} belum dihitung</summary><ul>${un.map(([m,i])=>`<li><a href="#" data-a="${esc(a)}" data-i="${i}">${esc(m.nama)}</a></li>`).join('')}</ul></details>`:'<small style="color:var(--ok)">✓ Semua sudah dihitung</small>'}</div>`}).join('')}<div class="acts"><button class="btn" id="snd" style="background:var(--pr)">📤 Simpan ke Google Drive</button><button class="btn" id="csv" style="background:var(--ok)">⬇ Unduh CSV (cadangan)</button><button class="btn2" id="clr" style="padding:14px">🗑️ Hapus semua data</button></div>`;
- $('bk2').onclick=()=>go('home');document.querySelectorAll('#v-review a').forEach(a=>a.onclick=e=>{e.preventDefault();curArea=a.dataset.a;cat='SEMUA';q='';todo=false;show('area');rArea();openSheet(+a.dataset.i)});$('snd').onclick=submit;$('csv').onclick=exportCsv;$('clr').onclick=()=>{if(confirm('Hapus SEMUA data opname di perangkat ini?')){st={nama:st.nama,tanggal:today(),items:{},custom:st.custom,shift:st.shift};save();toast('Data dihapus','ok');go('home')}};
+ $('v-review').innerHTML=`<div class="top"><div class="top-row"><button class="back" id="bk2">←</button><h1>Review &amp; Kirim</h1></div></div>
+ <div class="stats"><div class="stat"><b style="color:var(--ok)">${D}</b><span>Dihitung</span></div><div class="stat"><b style="color:var(--bad)">${T-D}</b><span>Belum</span></div><div class="stat"><b>${fmt(rj)}</b><span>Total rusak</span></div></div>
+ ${AREAS.map(a=>{const un=AREA_CONFIG[a].map((m,i)=>[m,i]).filter(([m])=>!done(a,m));return `<div class="card"><h3><span>${esc(a)}</span><span>${cnt(a)}/${AREA_CONFIG[a].length}</span></h3>${un.length?`<details><summary style="color:var(--tx2);font-size:13px">${un.length} belum dihitung</summary><ul>${un.map(([m,i])=>`<li><a href="#" data-a="${esc(a)}" data-i="${i}">${esc(m.nama)}</a></li>`).join('')}</ul></details>`:'<small style="color:var(--ok)">✓ Semua sudah dihitung</small>'}</div>`}).join('')}
+ <div class="acts"><button class="btn" id="snd" style="background:var(--pr)">☁️ Simpan ke Google Drive</button><button class="btn" id="csv" style="background:var(--ok)">⬇ Unduh CSV (cadangan)</button><button class="btn2" id="clr" style="padding:14px">🗑️ Hapus semua data</button></div>`;
+ $('bk2').onclick=()=>go('home');
+ document.querySelectorAll('#v-review a').forEach(a=>a.onclick=e=>{e.preventDefault();curArea=a.dataset.a;cat='SEMUA';q='';todo=false;show('area');rArea();openSheet(+a.dataset.i)});
+ $('snd').onclick=submit;$('csv').onclick=exportCsv;
+ $('clr').onclick=()=>{if(confirm('Hapus SEMUA data opname di perangkat ini?')){st={nama:st.nama,tanggal:today(),items:{}};save();toast('Data dihapus','ok');go('home')}};
 }
 async function submit(){
  if(!st.nama){toast('Isi nama pelaksana dulu','err');return}
- const un=totalAll()-doneAll();if(un&&!confirm(`${un} item belum dihitung dan tidak ikut terkirim. Lanjut kirim?`))return;
- const b=$('snd');b.disabled=true;b.textContent='Menyimpan…';
+ const un=totalAll()-doneAll();
+ if(un&&!confirm(`${un} item belum dihitung dan tidak ikut terkirim. Lanjut kirim?`))return;
+ const entries=[];
+ AREAS.forEach(a=>AREA_CONFIG[a].forEach(m=>{
+   const f=fld(a,m),it=st.items[f];
+   if(!it||!it.c)return;
+   const L=LAST[f],stokAwal=L?Number(L.v)||0:0,masuk=mk_(it),stokAkhir=tot(it),rusak=Number(it.x)||0;
+   entries.push({
+     area:a,material:m.nama,nama:m.nama,satuan:m.satuan,
+     stokAwal,masuk,stokAkhir,terpakai:stokAwal+masuk-stokAkhir,rusak,
+     tally:Number(it.t)||0,lot:Array.isArray(it.e)?it.e:[]
+   });
+ }));
+ if(!entries.length){toast('Belum ada material yang dihitung','err');return}
+ const b=$('snd');b.disabled=true;b.textContent='☁️ Menyimpan ke Google Drive...';
+ const payload={action:'saveOpname',data:{type:'STOCK_OPNAME',version:'2.0',header:{tanggal:st.tanggal,shift:String(st.shift),pelaksana:st.nama},entries}};
  try{
-  const entries=[];
-  AREAS.forEach(a=>AREA_CONFIG[a].forEach(m=>{const f=fld(a,m),it=st.items[f];if(!it||!it.c)return;const stok=fmt(tot(it)),masuk=mk_(it),rusak=it.x||0,L=LAST[f],stokAwal=L?Number(L.v):0,terpakai=L?fmt(stokAwal+masuk-stok):null;entries.push({area:a,material:m.nama,satuan:m.satuan,stokAwal,masuk,stokAkhir:stok,terpakai,rusak,tally:it.t||0,lot:it.e||[]})}));
-  const data={type:'STOCK_OPNAME',version:'1.0',sessionId:`OPN-${st.tanggal.replace(/-/g,'')}-S${st.shift}-${Date.now()}`,savedAt:new Date().toISOString(),header:{tanggal:st.tanggal,shift:String(st.shift),pelaksana:st.nama},summary:{totalMaterial:entries.length,totalMasuk:entries.reduce((s,x)=>s+Number(x.masuk||0),0),totalStok:entries.reduce((s,x)=>s+Number(x.stokAkhir||0),0),totalTerpakai:entries.reduce((s,x)=>s+Number(x.terpakai||0),0),totalRusak:entries.reduce((s,x)=>s+Number(x.rusak||0),0)},entries};
-  const result=await saveOpnameToDrive(data);
-  st.sent=Date.now();entries.forEach(x=>{const key=fld(x.area,{nama:x.material});LAST[key]={v:x.stokAkhir,tgl:st.tanggal,shift:st.shift}});localStorage.setItem('opname_last',JSON.stringify(LAST));save();toast(`✅ Tersimpan: ${result.fileName}`,'ok');
-  setTimeout(()=>{if(confirm('Terkirim. Mulai periode opname baru?')){st.items={};save();go('home')}},600);
- }catch(err){console.error(err);setDriveStatus('error');toast('❌ Gagal ke Google Drive: '+err.message+'\nData tetap aman di perangkat.','err');}
- finally{b.disabled=false;b.textContent='📤 Simpan ke Google Drive'}
+   const r=await fetch(SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
+   if(!r.ok)throw new Error('HTTP '+r.status);
+   const j=await r.json();
+   if(j.status&&j.status!=='ok')throw new Error(j.message||'Gagal menyimpan');
+   st.sent=Date.now();
+   entries.forEach(x=>{const f=fld(x.area,{nama:x.material});LAST[f]={v:x.stokAkhir,tgl:st.tanggal,shift:st.shift}});
+   try{localStorage.setItem('opname_last',JSON.stringify(LAST))}catch{}
+   save();
+   toast('✅ Opname tersimpan ke Google Drive','ok');
+   if(confirm('Data berhasil disimpan. Mulai periode opname baru? Stok fisik ini akan menjadi acuan stok awal berikutnya.')){
+     st.items={};save();go('home');
+   }
+ }catch(e){
+   console.error(e);
+   toast('❌ Gagal simpan. Data tetap aman di perangkat. Cek koneksi / URL Apps Script.','err');
+ }finally{b.disabled=false;b.textContent='☁️ Simpan ke Google Drive'}
 }
-function exportCsv(){const rows=[['Tanggal','Pelaksana','Area','Material','Shift','Satuan','Awal','Masuk','Stok','Terpakai','Rusak']];AREAS.forEach(a=>AREA_CONFIG[a].forEach(m=>{const it=st.items[fld(a,m)];if(it&&it.c){const L=LAST[fld(a,m)];rows.push([st.tanggal,st.nama,a,m.nama,st.shift,m.satuan,L?L.v:'',mk_(it),fmt(tot(it)),L?fmt(L.v+mk_(it)-tot(it)):'',it.x||0])}}));const csv='\ufeff'+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`Opname_${st.tanggal}_Shift${st.shift}.csv`;a.click()}
-render();syncRemote();</script>
+
+function exportCsv(){
+ const rows=[['Tanggal','Pelaksana','Area','Material','Shift','Satuan','Awal','Masuk','Stok','Terpakai','Rusak']];
+ AREAS.forEach(a=>AREA_CONFIG[a].forEach(m=>{const it=st.items[fld(a,m)];if(it&&it.c){const L=LAST[fld(a,m)];rows.push([st.tanggal,st.nama,a,m.nama,st.shift,m.satuan,L?L.v:'',mk_(it),fmt(tot(it)),L?fmt(L.v+mk_(it)-tot(it)):'',it.x||0])}}));
+ const csv='\ufeff'+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`Opname_${st.tanggal}.csv`;a.click();
+}
+render();checkBackend();
+</script>
 </body>
 </html>
