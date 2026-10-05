@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2e407d">
+<title>Opname Material</title>
+<style>
+:root{--pr:#2e407d;--pr2:#4a65a0;--ac:#ff9800;--ok:#2e9e5b;--bad:#e53935;--bg:#f3f5fb;--card:#fff;--tx:#1d2340;--tx2:#7a819c;--bd:#e4e7f2;--r:20px;--sh:0 6px 18px rgba(46,64,125,.10)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100dvh}
+.app{max-width:520px;margin:0 auto;min-height:100dvh;position:relative;padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+.view{display:none}.view.on{display:block}
+button{font:inherit;cursor:pointer;border:0;border-radius:14px;touch-action:manipulation}
+input{font:inherit}
+.hero{background:linear-gradient(160deg,var(--pr) 0%,#5a76c4 100%);color:#fff;padding:calc(20px + env(safe-area-inset-top)) 20px 64px;border-radius:0 0 32px 32px}
+.hero h1{margin:0;font-size:26px}.hero p{margin:2px 0 0;opacity:.8;font-size:13px}
+.hero-row{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.ring{position:relative;flex:none}.ring b{position:absolute;inset:0;display:grid;place-items:center;font-size:15px}
+.who{margin:-44px 16px 0;background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.who label{font-size:11px;color:var(--tx2);font-weight:600}
+.who input{width:100%;border:1.5px solid var(--bd);border-radius:12px;padding:10px;background:#fafbff;color:var(--tx)}
+.stats{display:flex;gap:8px;margin:14px 16px 0}
+.stat{flex:1;background:var(--card);border-radius:16px;padding:10px;text-align:center;box-shadow:var(--sh)}
+.stat b{display:block;font-size:20px}.stat span{font-size:11px;color:var(--tx2)}
+h2{font-size:17px;margin:20px 16px 10px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 16px}
+.ac{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:16px 12px;text-align:center;border:0;color:var(--tx)}
+.ic{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;font-size:24px;margin:0 auto 8px;box-shadow:0 4px 10px rgba(0,0,0,.08)}
+.ac b{display:block;font-size:14px}.ac small{color:var(--tx2)}
+.bar{height:6px;background:var(--bd);border-radius:9px;margin-top:8px;overflow:hidden}.bar i{display:block;height:100%;background:var(--ac);border-radius:9px;transition:width .3s}
+.fab{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom));width:min(488px,calc(100% - 32px));background:var(--pr);color:#fff;font-weight:700;font-size:16px;padding:16px;box-shadow:0 10px 24px rgba(46,64,125,.35);z-index:5}
+.top{background:linear-gradient(160deg,var(--ac),#ffb74d);color:#fff;padding:calc(14px + env(safe-area-inset-top)) 16px 18px;border-radius:0 0 28px 28px}
+.top-row{display:flex;align-items:center;gap:10px}
+.back{background:rgba(255,255,255,.25);color:#fff;width:38px;height:38px;font-size:18px}
+.top h1{margin:0;font-size:22px;flex:1}
+.search{margin-top:12px;width:100%;border:0;border-radius:14px;padding:12px 14px;background:rgba(255,255,255,.95);color:var(--tx)}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:12px 16px 4px;scrollbar-width:none}
+.chip{flex:none;background:var(--card);color:var(--tx2);padding:8px 14px;border-radius:999px;font-weight:600;font-size:13px;box-shadow:0 2px 6px rgba(0,0,0,.05)}
+.chip.on{background:var(--pr);color:#fff}
+.list{padding:8px 16px;display:grid;gap:10px}
+.it{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:18px;box-shadow:var(--sh);padding:14px;text-align:left;width:100%;color:var(--tx);border-left:5px solid var(--bd)}
+.it.done{border-left-color:var(--ok)}
+.it .nm{flex:1;font-weight:600;font-size:14px}.it .nm small{display:block;color:var(--tx2);font-weight:500}
+.it .qty{font-size:22px;font-weight:800;color:var(--pr);text-align:right;min-width:56px}
+.it .qty small{display:block;font-size:10px;color:var(--tx2);font-weight:600}
+.it.todo .qty{color:#c3c8dc}
+.empty{text-align:center;color:var(--tx2);padding:30px}
+.back-sh{position:fixed;inset:0;background:rgba(20,26,56,.55);display:none;z-index:20}.back-sh.on{display:block}
+.sheet{position:fixed;left:50%;transform:translate(-50%,100%);bottom:0;width:min(520px,100%);max-height:94dvh;overflow:auto;background:#fff;border-radius:28px 28px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));z-index:21;transition:transform .25s}
+.sheet.on{transform:translate(-50%,0)}
+.grab{width:44px;height:5px;background:var(--bd);border-radius:9px;margin:0 auto 10px}
+.sh-h{display:flex;justify-content:space-between;gap:10px}.sh-h b{font-size:16px}.sh-h small{color:var(--tx2);display:block}
+.x{background:var(--bg);width:36px;height:36px;color:var(--tx2);font-size:16px;flex:none}
+.big{text-align:center;margin:8px 0 4px}.big b{font-size:60px;line-height:1;color:var(--pr)}.big small{display:block;color:var(--tx2)}
+.tally{min-height:36px;display:flex;flex-wrap:wrap;gap:4px;justify-content:center;align-items:center;margin-bottom:10px}
+.tally svg{stroke:var(--pr);stroke-width:2.6;stroke-linecap:round}.tally span{font-size:12px;color:var(--tx2)}
+.tap{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px}
+.tap button{background:#e8edff;color:var(--pr);font-weight:800;font-size:20px;padding:20px 0}
+.tap .p1{background:var(--pr);color:#fff;font-size:28px;grid-row:span 1}
+.row{display:flex;gap:8px;margin-top:10px}
+.row input{flex:1;min-width:0;border:1.5px solid var(--bd);border-radius:14px;padding:12px;background:#fafbff}
+.btn{background:var(--ac);color:#fff;font-weight:700;padding:12px 16px}
+.btn2{background:var(--bg);color:var(--tx);font-weight:600;padding:12px 14px}
+.lots{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.lot{background:#eef1fb;border-radius:999px;padding:6px 6px 6px 12px;font-weight:700;color:var(--pr);font-size:13px}
+.lot button{background:none;color:var(--bad);padding:0 6px;font-size:14px}
+.lbl{font-size:12px;color:var(--tx2);font-weight:600;margin-top:12px}
+.nx{display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-top:14px}
+.nx .btn{background:var(--ok)}
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);margin:12px 16px;padding:14px}
+.card h3{margin:0 0 8px;font-size:15px;display:flex;justify-content:space-between}
+.card ul{margin:6px 0 0;padding-left:18px;color:var(--tx2);font-size:13px}.card li{padding:3px 0}
+.card li a{color:var(--pr);font-weight:600}
+.acts{display:grid;gap:10px;margin:14px 16px}.acts .btn{padding:16px;font-size:16px}
+.nav{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(520px,100%);display:flex;background:#fff;border-radius:22px 22px 0 0;box-shadow:0 -6px 20px rgba(46,64,125,.12);padding:8px 8px calc(8px + env(safe-area-inset-bottom));z-index:5}
+.nav button{flex:1;background:none;color:var(--tx2);font-size:20px;padding:6px 0;display:flex;flex-direction:column;align-items:center;gap:2px}
+.nav button span{font-size:11px;font-weight:600}.nav button.on{color:var(--pr)}
+.top.bl{background:linear-gradient(160deg,var(--pr),#5a76c4);padding-bottom:44px}
+.top.bl p{margin:2px 0 0;opacity:.85;font-size:12px}
+.sum{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:-30px 16px 0}
+.sum div{background:#fff;border-radius:18px;box-shadow:var(--sh);padding:12px}
+.sum small{color:var(--tx2);font-size:11px;font-weight:600}.sum b{display:block;font-size:22px;color:var(--pr)}
+.rk{background:var(--card);border-radius:18px;box-shadow:var(--sh);padding:14px;border-left:5px solid var(--bd)}
+.rk.full{border-left-color:var(--ok)}.rk.part{border-left-color:var(--ac)}
+.rk-h{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.rk-h .nm{font-weight:600;font-size:14px}.rk-h .nm small{display:block;color:var(--tx2);font-weight:500}
+.rk-h .qty{font-size:24px;font-weight:800;color:var(--pr);text-align:right}.rk-h .qty small{display:block;font-size:10px;color:var(--tx2);font-weight:600}
+.locs{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.loc{background:#e2f6e9;color:#1d6b3f;padding:7px 11px;font-size:12px;font-weight:700;border-radius:999px}
+.loc.no{background:#f0f1f6;color:var(--tx2);font-weight:600}
+.all{background:#f3f6ff;border-radius:14px;padding:10px 12px;margin:0 0 10px;font-size:13px;color:var(--tx2)}.all b{color:var(--pr);font-size:16px}
+.toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top));transform:translateX(-50%);background:#1d2340;color:#fff;padding:12px 18px;border-radius:14px;z-index:40;font-size:14px;max-width:90%;display:none}
+.toast.err{background:var(--bad)}.toast.ok{background:var(--ok)}
+</style>
+</head>
+<body>
+<div class="app">
+ <section class="view on" id="v-home"></section>
+ <section class="view" id="v-area"></section>
+ <section class="view" id="v-rekap"></section>
+ <section class="view" id="v-review"></section>
+</div>
+<nav class="nav" id="nav"><button data-v="home"><i style="font-style:normal">🏠</i><span>Beranda</span></button><button data-v="rekap"><i style="font-style:normal">📊</i><span>Rekap Stok</span></button><button data-v="review"><i style="font-style:normal">📤</i><span>Review &amp; Kirim</span></button></nav>
+<div class="back-sh" id="bk"></div><div class="sheet" id="sheet"></div><div class="toast" id="toast"></div>
+<script>
+function normalizeMaterialName(nama) {
+      return nama
+        .replace(/ BLACK BEAN/g, ' BB')
+        .replace(/ YELLOW BEAN/g, ' YB');
+    }
+
+    const AREA_CONFIG = {
+      'Palletizing': [
+        { nama: "INNER YB 12,5G", satuan: "ROL" },
+        { nama: "INNER BB S 40G LB", satuan: "ROL" },
+        { nama: "INNER BB S 40G B4G1", satuan: "ROL" },
+        { nama: "INNER YB 20G 4 + 1 SACHET", satuan: "PCS" },
+        { nama: "INNER YB 20G LUNCH BOX", satuan: "ROL" },
+        { nama: "KARDUS BB 725G PIRING", satuan: "PCS" },
+        { nama: "KARDUS YB 77G B5G1", satuan: "PCS" },
+        { nama: "KARDUS YB 77G K275 M150 K200", satuan: "PCS" },
+        { nama: "KARDUS YB 1000G", satuan: "PCS" },
+        { nama: "KARDUS BB 40G LB", satuan: "PCS" },
+        { nama: "KARDUS YB 700G NP BANNER HARGA", satuan: "PCS" },
+        { nama: "KARDUS BB 77G B3G1 K275 M150 K200", satuan: "PCS" },
+        { nama: "KARDUS BB 77G H K275 M150 K200", satuan: "PCS" },
+        { nama: "KARDUS YB 12,5 GRAM", satuan: "PCS" },
+        { nama: "KARDUS KECAP SEDAAP YB 700G", satuan: "PCS" },
+        { nama: "KARDUS YB 20G 4 + 1 SACHET", satuan: "PCS" },
+        { nama: "KARDUS YB 20G PROMO LUNCH BOX", satuan: "PCS" },
+        { nama: "KARDUS YB 550G H", satuan: "PCS" },
+        { nama: "KARDUS BB 270G HARGA", satuan: "PCS" },
+        { nama: "KARDUS BB S 40G B4G1", satuan: "PCS" },
+        { nama: "KARDUS YB 250 G", satuan: "PCS" },
+        { nama: "LABEL JERIGEN YB 25KG 2025", satuan: "PCS" },
+        { nama: "LABEL JERIGEN 6 KG 2025", satuan: "PCS" },
+        { nama: "LAKBAN WINGSFOOD 48 MM X 1000M", satuan: "ROL" },
+        { nama: "POUCH BB 270G PROMO HRG", satuan: "PCS" },
+        { nama: "POUCH KECAP SEDAAP YB 700G", satuan: "PCS" },
+        { nama: "POUCH YB 700G BANNER 19.500", satuan: "PCS" },
+        { nama: "POUCH YB 1000G", satuan: "PCS" },
+        { nama: "POUCH BB 725G P 4R1", satuan: "PCS" },
+        { nama: "POUCH BB 725G PIRING", satuan: "PCS" },
+        { nama: "POUCH BB 77G B3G1", satuan: "PCS" },
+        { nama: "POUCH YB 77G YB 5G 1 NEW SEALER", satuan: "PCS" },
+        { nama: "POUCH YB 250G", satuan: "PCS" },
+        { nama: "POUCH YB 550G H", satuan: "PCS" },
+        { nama: "POUCH BB 725G", satuan: "PCS" },
+        { nama: "POUCH BB 725 G 4R 1", satuan: "PCS" },
+        { nama: "POUCH BB 77G NEW SEALER PROMO HRG", satuan: "PCS" },
+        { nama: "POUCH YB 77G PROMO HRG NEW SEALER", satuan: "PCS" },
+        { nama: "Sticker Toples YB 20G", satuan: "PCS" },
+        { nama: "BADAN LB YB20G", satuan: "PCS" },
+        { nama: "TUTUP LB 1L YB20G", satuan: "PCS" },
+        { nama: "STICKER BB 40G LB", satuan: "PCS" },
+        { nama: "BADAN LB BB40GR", satuan: "PCS" },
+        { nama: "TUTUP LB BB40GR", satuan: "PCS" }
+      ],
+      'Stanggi PM': [
+        { nama: "INNER YB 12,5G", satuan: "ROL" },
+        { nama: "INNER BB S 40G LB", satuan: "ROL" },
+        { nama: "INNER BB S 40G B4G1", satuan: "ROL" },
+        { nama: "INNER YB 20G 4 + 1 SACHET", satuan: "PCS" },
+        { nama: "INNER YB 20G LUNCH BOX", satuan: "ROL" },
+        { nama: "KARDUS BB 725G PIRING", satuan: "PCS" },
+        { nama: "KARDUS YB 77G B5G1", satuan: "PCS" },
+        { nama: "KARDUS YB 77G K275 M150 K200", satuan: "PCS" },
+        { nama: "KARDUS YB 1000G", satuan: "PCS" },
+        { nama: "KARDUS BB 40G LB", satuan: "PCS" },
+        { nama: "KARDUS YB 700G NP BANNER HARGA", satuan: "PCS" },
+        { nama: "KARDUS BB 77G B3G1 K275 M150 K200", satuan: "PCS" },
+        { nama: "KARDUS BB 77G H K275 M150 K200", satuan: "PCS" },
+        { nama: "KARDUS YB 12,5 GRAM", satuan: "PCS" },
+        { nama: "KARDUS KECAP SEDAAP YB 700G", satuan: "PCS" },
+        { nama: "KARDUS YB 20G 4 + 1 SACHET", satuan: "PCS" },
+        { nama: "KARDUS YB 20G PROMO LUNCH BOX", satuan: "PCS" },
+        { nama: "KARDUS YB 550G H", satuan: "PCS" },
+        { nama: "KARDUS BB 270G HARGA", satuan: "PCS" },
+        { nama: "KARDUS BB S 40G B4G1", satuan: "PCS" },
+        { nama: "KARDUS YB 250 G", satuan: "PCS" },
+        { nama: "LABEL JERIGEN YB 25KG 2025", satuan: "PCS" },
+        { nama: "LABEL JERIGEN 6 KG 2025", satuan: "PCS" },
+        { nama: "LAKBAN WINGSFOOD 48 MM X 1000M", satuan: "ROL" },
+        { nama: "POUCH BB 270G PROMO HRG", satuan: "PCS" },
+        { nama: "POUCH KECAP SEDAAP YB 700G", satuan: "PCS" },
+        { nama: "POUCH YB 700G BANNER 19.500", satuan: "PCS" },
+        { nama: "POUCH YB 1000G", satuan: "PCS" },
+        { nama: "POUCH BB 725G P 4R1", satuan: "PCS" },
+        { nama: "POUCH BB 725G PIRING", satuan: "PCS" },
+        { nama: "POUCH BB 77G B3G1", satuan: "PCS" },
+        { nama: "POUCH YB 77G YB 5G 1 NEW SEALER", satuan: "PCS" },
+        { nama: "POUCH YB 250G", satuan: "PCS" },
+        { nama: "POUCH YB 550G H", satuan: "PCS" },
+        { nama: "POUCH BB 725G", satuan: "PCS" },
+        { nama: "POUCH BB 725 G 4R 1", satuan: "PCS" },
+        { nama: "POUCH BB 77G NEW SEALER PROMO HRG", satuan: "PCS" },
+        { nama: "POUCH YB 77G PROMO HRG NEW SEALER", satuan: "PCS" },
+        { nama: "Sticker Toples YB 20G", satuan: "PCS" },
+        { nama: "BADAN LB YB20G", satuan: "PCS" },
+        { nama: "TUTUP LB 1L YB20G", satuan: "PCS" },
+        { nama: "STICKER BB 40G LB", satuan: "PCS" },
+        { nama: "BADAN LB BB40GR", satuan: "PCS" },
+        { nama: "TUTUP LB BB40GR", satuan: "PCS" }
+      ],
+      'Stagging Kempu': [
+        { nama: "JERIGEN 25KG", satuan: "PCS" },
+        { nama: "JERIGEN 6 KG NEW", satuan: "PCS" },
+        { nama: "LABEL JERIGEN YB 25KG 2025", satuan: "PCS" },
+        { nama: "LABEL JERIGEN 6 KG 2025", satuan: "PCS" },
+        { nama: "TUTUP DALAM JERIGEN 6KG", satuan: "PCS" },
+        { nama: "TUTUP LUAR JERIGEN 6KG", satuan: "PCS" }
+      ],
+      'Line C': [
+        { nama: "KARDUS YB 77G B5G1", satuan: "PCS" },
+        { nama: "KARDUS YB 77G K275 M150 K200", satuan: "PCS" },
+        { nama: "KARDUS BB 77G B3G1 K275 M150 K200", satuan: "PCS" },
+        { nama: "KARDUS BB 77G H K275 M150 K200", satuan: "PCS" },
+        { nama: "POUCH BB 77G B3G1", satuan: "PCS" },
+        { nama: "POUCH YB 77G YB 5G 1 NEW SEALER", satuan: "PCS" },
+        { nama: "POUCH BB 77G NEW SEALER PROMO HRG", satuan: "PCS" },
+        { nama: "POUCH YB 77G PROMO HRG NEW SEALER", satuan: "PCS" }
+      ],
+      'Line D': [
+        { nama: "INNER YB 12,5G", satuan: "ROL" },
+        { nama: "INNER BB S 40G LB", satuan: "ROL" },
+        { nama: "INNER BB S 40G B4G1", satuan: "ROL" },
+        { nama: "INNER YB 20G 4 + 1 SACHET", satuan: "PCS" },
+        { nama: "INNER YB 20G LUNCH BOX", satuan: "ROL" },
+        { nama: "KARDUS BB 725G PIRING", satuan: "PCS" },
+        { nama: "KARDUS YB 1000G", satuan: "PCS" },
+        { nama: "KARDUS BB 40G LB", satuan: "PCS" },
+        { nama: "KARDUS YB 700G NP BANNER HARGA", satuan: "PCS" },
+        { nama: "KARDUS YB 12,5 GRAM", satuan: "PCS" },
+        { nama: "KARDUS KECAP SEDAAP YB 700G", satuan: "PCS" },
+        { nama: "KARDUS YB 20G 4 + 1 SACHET", satuan: "PCS" },
+        { nama: "KARDUS YB 20G PROMO LUNCH BOX", satuan: "PCS" },
+        { nama: "KARDUS YB 550G H", satuan: "PCS" },
+        { nama: "KARDUS BB 270G HARGA", satuan: "PCS" },
+        { nama: "KARDUS BB S 40G B4G1", satuan: "PCS" },
+        { nama: "KARDUS YB 250 G", satuan: "PCS" },
+        { nama: "POUCH BB 270G PROMO HRG", satuan: "PCS" },
+        { nama: "POUCH KECAP SEDAAP YB 700G", satuan: "PCS" },
+        { nama: "POUCH YB 700G BANNER 19.500", satuan: "PCS" },
+        { nama: "POUCH YB 1000G", satuan: "PCS" },
+        { nama: "POUCH BB 725G P 4R1", satuan: "PCS" },
+        { nama: "POUCH BB 725G PIRING", satuan: "PCS" },
+        { nama: "POUCH YB 250G", satuan: "PCS" },
+        { nama: "POUCH YB 550G H", satuan: "PCS" },
+        { nama: "POUCH BB 725G", satuan: "PCS" },
+        { nama: "POUCH BB 725 G 4R 1", satuan: "PCS" },
+        { nama: "Sticker Toples YB 20G", satuan: "PCS" },
+        { nama: "BADAN LB YB20G", satuan: "PCS" },
+        { nama: "TUTUP LB 1L YB20G", satuan: "PCS" },
+        { nama: "STICKER BB 40G LB", satuan: "PCS" },
+        { nama: "BADAN LB BB40GR", satuan: "PCS" },
+        { nama: "TUTUP LB BB40GR", satuan: "PCS" }
+      ]
+    };
+
+    function getMaterialCategory(nama) {
+      if (nama.startsWith('INNER')) return 'INNER';
+      if (nama.startsWith('KARDUS')) return 'KARDUS';
+      if (nama.startsWith('POUCH')) return 'POUCH';
+      if (nama.startsWith('LABEL')) return 'LABEL';
+      if (nama.startsWith('JERIGEN')) return 'JERIGEN';
+      if (nama.startsWith('Sticker') || nama.startsWith('STICKER')) return 'STICKER';
+      if (nama.startsWith('LAKBAN')) return 'LAKBAN';
+      if (nama.startsWith('BADAN LB')) return 'BADAN LB';
+      if (nama.startsWith('TUTUP LB')) return 'TUTUP LB';
+      if (nama.startsWith('TUTUP DALAM') || nama.startsWith('TUTUP LUAR')) return 'TUTUP JERIGEN';
+      return 'LAINNYA';
+    }
+
+    const MATERIAL_CATEGORIES = ['SEMUA', 'INNER', 'KARDUS', 'POUCH', 'LABEL', 'JERIGEN', 'STICKER', 'LAKBAN', 'BADAN LB', 'TUTUP LB', 'TUTUP JERIGEN', 'LAINNYA'];
+    
+const SCRIPT_URL='https://script.google.com/macros/s/AKfycbz_4DEl5Fts78aQ-k1x6BZ9AUPoU09DU2A6GfKQvwEwY65qNyLzbqzOfQX7arTyoElCeA/exec';
+const S_KEY='opname_v2';
+const ICONS=['📦','🧴','🏷️','🛢️','🧰','🧾'],TINTS=['#fff0d6','#dff0ff','#e2f6e9','#f2e5fb','#ffe3e3','#e6f7f7'];
+const today=()=>{const d=new Date();return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=id=>document.getElementById(id);
+let st;try{st=JSON.parse(localStorage.getItem(S_KEY))}catch{}
+st=st||{nama:'',tanggal:today(),items:{}};st.shift=st.shift||'1';st.custom=st.custom||{};
+let tm;const save=()=>{clearTimeout(tm);tm=setTimeout(()=>{try{localStorage.setItem(S_KEY,JSON.stringify(st))}catch{}},120)};
+const AREAS=Object.keys(AREA_CONFIG);
+const fld=(a,m)=>`opname_${a}_${cleanMaterialName(m.nama)}`;
+function cleanMaterialName(n){return normalizeMaterialName(n).replace(/ /g,'_').replace(/\//g,'per').replace(/[^a-zA-Z0-9_,]/g,'').toLowerCase()}
+const tot=it=>it?(it.t||0)+(it.e||[]).reduce((a,b)=>a+b,0):0;
+const mk_=it=>it&&it.m?it.m.reduce((a,b)=>a+b,0):0;
+function addMat(a,nama,satuan){if(!AREA_CONFIG[a])return;const k=cleanMaterialName(nama);if(AREA_CONFIG[a].some(x=>cleanMaterialName(x.nama)===k))return;AREA_CONFIG[a].push({nama,satuan,baru:1})}
+Object.entries(st.custom).forEach(([a,l])=>l.forEach(x=>addMat(a,x.nama,x.satuan)));
+let LAST={};try{LAST=JSON.parse(localStorage.getItem('opname_last'))||{}}catch{}
+
+// =====================================================
+// GOOGLE DRIVE JSON DATABASE
+// =====================================================
+let DRIVE_STATUS='offline';
+function setDriveStatus(status){
+  DRIVE_STATUS=status;
+  const el=document.getElementById('drive-status');
+  if(!el)return;
+  const map={online:['🟢','Drive siap'],saving:['🟡','Menyimpan…'],offline:['⚪','Belum terhubung'],error:['🔴','Drive error']};
+  const x=map[status]||map.offline;
+  el.innerHTML=`${x[0]} ${x[1]}`;
+}
+function syncRemote(){
+  const u=SCRIPT_URL.trim();
+  if(!u)return;
+  fetch(u+'?action=last').then(r=>r.json()).then(j=>{if(j.last){LAST=j.last;try{localStorage.setItem('opname_last',JSON.stringify(LAST))}catch{}}setDriveStatus('online')}).catch(()=>{});
+  fetch(u+'?action=materials').then(r=>r.json()).then(j=>{(j.materials||[]).forEach(x=>addMat(x.area,x.nama,x.satuan));if(view!=='area')render()}).catch(()=>{});
+}
+async function saveOpnameToDrive(data){
+  setDriveStatus('saving');
+  const response=await fetch(SCRIPT_URL.trim(),{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action:'saveOpname',data:data})
+  });
+  if(!response.ok)throw new Error('HTTP '+response.status);
+  const result=await response.json();
+  if(result.status!=='ok')throw new Error(result.msg||'Google Drive menolak penyimpanan');
+  setDriveStatus('online');
+  return result;
+}
+
+const fmt=n=>Math.round(n*100)/100;
+const done=(a,m)=>{const it=st.items[fld(a,m)];return !!(it&&it.c)};
+const cnt=a=>AREA_CONFIG[a].filter(m=>done(a,m)).length;
+const totalAll=()=>AREAS.reduce((s,a)=>s+AREA_CONFIG[a].length,0);
+const doneAll=()=>AREAS.reduce((s,a)=>s+cnt(a),0);
+function toast(t,k){const e=$('toast');e.textContent=t;e.className='toast '+(k||'');e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',2800)}
+const vib=()=>{try{navigator.vibrate&&navigator.vibrate(12)}catch{}};
+function ring(p,s,col){const r=s/2-5,c=2*Math.PI*r;return `<div class="ring" style="width:${s}px;height:${s}px"><svg width="${s}" height="${s}"><circle cx="${s/2}" cy="${s/2}" r="${r}" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="6"/><circle cx="${s/2}" cy="${s/2}" r="${r}" fill="none" stroke="${col}" stroke-width="6" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${c*(1-p)}" transform="rotate(-90 ${s/2} ${s/2})"/></svg><b>${Math.round(p*100)}%</b></div>`}
+let view='home',curArea=null,cat='SEMUA',q='',todo=false,cur=null;
+function show(v){view=v;document.querySelectorAll('.view').forEach(e=>e.classList.toggle('on',e.id==='v-'+v));$('nav').style.display=v==='area'?'none':'flex';document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v))}
+function go(v){show(v);scrollTo(0,0);render()}
+function render(){({home:rHome,area:rArea,rekap:rRekap,review:rReview})[view]()}
+document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>go(b.dataset.v));
+/* ===== Rekap ===== */
+function locsOf(nama){const k=cleanMaterialName(nama),o=[];AREAS.forEach(a=>AREA_CONFIG[a].forEach((x,i)=>{if(cleanMaterialName(x.nama)===k){const f=fld(a,x),it=st.items[f],c=!!(it&&it.c),L=LAST[f],aw=L?L.v:null,v=c?tot(it):0;o.push({a,i,c,v,x:c?(it.x||0):0,aw,mk:mk_(it),tp:c&&aw!==null?aw+mk_(it)-v:null})}}));return o}
+function agg(){const m=new Map();AREAS.forEach(a=>AREA_CONFIG[a].forEach(x=>{const k=cleanMaterialName(x.nama);if(!m.has(k)){const l=locsOf(x.nama);m.set(k,{nama:x.nama,satuan:x.satuan,cat:getMaterialCategory(x.nama),locs:l,total:l.reduce((s,y)=>s+y.v,0),rusak:l.reduce((s,y)=>s+y.x,0),tp:l.reduce((s,y)=>s+(y.tp||0),0),tpn:l.filter(y=>y.tp!==null).length,mk:l.reduce((s,y)=>s+y.mk,0),n:l.filter(y=>y.c).length})}}));return [...m.values()]}
+let rq='',rs='all',rc='SEMUA';
+const stat=g=>g.n===0?'todo':g.n===g.locs.length?'full':'part';
+function rRekap(){
+ const G=agg(),inp=G.filter(g=>g.n>0).length,full=G.filter(g=>stat(g)==='full').length,sat={};G.forEach(g=>{sat[g.satuan]=(sat[g.satuan]||0)+g.total});
+ const sf=[['all','Semua'],['full','✓ Lengkap'],['part','◐ Sebagian'],['todo','⏳ Belum']];
+ $('v-rekap').innerHTML=`<div class="top bl"><h1 style="margin:0;font-size:22px">Rekap Stok</h1><p>Total semua lokasi · update langsung saat input</p></div><div class="sum"><div><small>Material diinput</small><b>${inp}/${G.length}</b></div><div><small>Lengkap semua lokasi</small><b>${full}/${G.length}</b></div>${Object.keys(sat).map(s=>`<div><small>Total stok (${s})</small><b>${fmt(sat[s]).toLocaleString('id-ID')}</b></div>`).join('')}</div><div style="padding:14px 16px 0"><input class="search" style="background:#fff;box-shadow:var(--sh);margin:0" id="rqs" placeholder="🔍 Cari material..." value="${esc(rq)}"></div><div class="chips">${sf.map(([k,l])=>`<button class="chip ${rs===k?'on':''}" data-s="${k}">${l}</button>`).join('')}</div><div class="chips" style="padding-top:0">${MATERIAL_CATEGORIES.map(c=>`<button class="chip ${rc===c?'on':''}" data-c="${c}">${c}</button>`).join('')}</div><div class="list" id="rl"></div>`;
+ $('rqs').oninput=e=>{rq=e.target.value.toLowerCase();fillRekap(G)};document.querySelectorAll('#v-rekap .chip[data-s]').forEach(b=>b.onclick=()=>{rs=b.dataset.s;rRekap()});document.querySelectorAll('#v-rekap .chip[data-c]').forEach(b=>b.onclick=()=>{rc=b.dataset.c;rRekap()});fillRekap(G);
+}
+function fillRekap(G){const L=G.filter(g=>(rs==='all'||stat(g)===rs)&&(rc==='SEMUA'||g.cat===rc)&&(!rq||g.nama.toLowerCase().includes(rq)));$('rl').innerHTML=L.length?L.map(g=>`<div class="rk ${stat(g)}"><div class="rk-h"><div class="nm">${esc(g.nama)}<small>${g.satuan} · ${g.n}/${g.locs.length} lokasi dihitung${g.tpn?` · terpakai ${fmt(g.tp)}`:''}${g.mk?` · masuk ${fmt(g.mk)}`:''}${g.rusak?` · rusak ${fmt(g.rusak)}`:''}</small></div><div class="qty">${g.n?fmt(g.total).toLocaleString('id-ID'):'—'}<small>${g.n?'TOTAL '+g.satuan:'belum'}</small></div></div><div class="locs">${g.locs.map(l=>`<button class="loc ${l.c?'':'no'}" data-a="${esc(l.a)}" data-i="${l.i}">${esc(l.a)}: ${l.c?fmt(l.v):'belum'}</button>`).join('')}</div></div>`).join(''):'<div class="empty">Tidak ada material</div>';document.querySelectorAll('#rl .loc').forEach(b=>b.onclick=()=>{curArea=b.dataset.a;openSheet(+b.dataset.i)});}
+function rHome(){
+ const T=totalAll(),D=doneAll();
+ $('v-home').innerHTML=`<div class="hero"><div class="hero-row"><div><h1>Opname Material</h1><p>Hitung stok langsung di lapangan</p><div id="drive-status" style="margin-top:8px;font-size:12px;opacity:.9">⚪ Belum terhubung</div></div>${ring(T?D/T:0,64,'#ffb74d')}</div></div><div class="who"><div><label>Nama pelaksana</label><input id="inNama" value="${esc(st.nama)}" placeholder="Nama Anda"></div><div><label>Tanggal</label><input id="inTgl" type="date" value="${st.tanggal}"></div><div style="grid-column:span 2"><label>Shift opname</label><select id="inSh" style="width:100%;border:1.5px solid var(--bd);border-radius:12px;padding:10px;background:#fafbff">${[1,2,3].map(s=>`<option ${st.shift==s?'selected':''}>${s}</option>`).join('')}</select></div></div><div class="stats"><div class="stat"><b style="color:var(--ok)">${D}</b><span>Dihitung</span></div><div class="stat"><b style="color:var(--ac)">${T-D}</b><span>Belum</span></div><div class="stat"><b>${T}</b><span>Total item</span></div></div><h2>Area opname</h2><div class="grid">${AREAS.map((a,i)=>{const n=AREA_CONFIG[a].length,d=cnt(a);return `<button class="ac" data-a="${esc(a)}"><div class="ic" style="background:${TINTS[i%6]}">${ICONS[i%6]}</div><b>${esc(a)}</b><small>${d}/${n} item</small><div class="bar"><i style="width:${n?d/n*100:0}%"></i></div></button>`}).join('')}</div>`;
+ $('inNama').oninput=e=>{st.nama=e.target.value;save()};$('inSh').onchange=e=>{st.shift=e.target.value;save()};$('inTgl').onchange=e=>{st.tanggal=e.target.value;save()};document.querySelectorAll('.ac').forEach(b=>b.onclick=()=>{curArea=b.dataset.a;cat='SEMUA';q='';todo=false;go('area')});setDriveStatus(DRIVE_STATUS);
+}
+function listIdx(){return AREA_CONFIG[curArea].map((m,i)=>i).filter(i=>{const m=AREA_CONFIG[curArea][i];return (cat==='SEMUA'||getMaterialCategory(m.nama)===cat)&&(!q||m.nama.toLowerCase().includes(q))&&(!todo||!done(curArea,m))})}
+function rArea(){
+ const n=AREA_CONFIG[curArea].length,d=cnt(curArea);$('v-area').innerHTML=`<div class="top"><div class="top-row"><button class="back" id="bk1">←</button><h1>${esc(curArea)}</h1>${ring(n?d/n:0,52,'#fff')}</div><input class="search" id="qs" placeholder="🔍 Cari material..." value="${esc(q)}"></div><div class="chips">${['SEMUA',...MATERIAL_CATEGORIES.slice(1)].map(c=>`<button class="chip ${c===cat?'on':''}" data-c="${c}">${c}</button>`).join('')}<button class="chip ${todo?'on':''}" id="tdo">⏳ Belum dihitung</button><button class="chip" id="newMat" style="background:var(--ac);color:#fff">＋ Material baru</button></div><div class="list" id="lst"></div>`;
+ $('bk1').onclick=()=>go('home');$('qs').oninput=e=>{q=e.target.value.toLowerCase();fillList()};document.querySelectorAll('.chip[data-c]').forEach(b=>b.onclick=()=>{cat=b.dataset.c;rArea()});$('tdo').onclick=()=>{todo=!todo;rArea()};$('newMat').onclick=openNew;fillList();
+}
+function fillList(){
+ const ids=listIdx();
+ $('lst').innerHTML=ids.length?ids.map(i=>{const m=AREA_CONFIG[curArea][i],ok=done(curArea,m),it=st.items[fld(curArea,m)];return `<button class="it ${ok?'done':'todo'}" data-i="${i}"><div class="nm">${esc(m.nama)}<small>${m.satuan}${m.baru?' · 🆕 baru':''}${it&&it.x?` · rusak ${fmt(it.x)}`:''}</small></div><div class="qty">${ok?fmt(tot(it)):'—'}<small>${ok?'✓ '+m.satuan:'belum'}</small></div></button>`}).join(''):'<div class="empty">Tidak ada material 🎉</div>';
+ document.querySelectorAll('.it').forEach(b=>b.onclick=()=>openSheet(+b.dataset.i));
+}
+function tally(n){const c=Math.min(n,60);let o='';for(let i=0;i<c;i+=5){const k=Math.min(5,c-i);let s='<svg viewBox="0 0 30 30" width="30" height="30">';for(let j=0;j<Math.min(k,4);j++)s+=`<line x1="${5+j*7}" y1="3" x2="${5+j*7}" y2="27"/>`;if(k===5)s+='<line x1="1" y1="24" x2="29" y2="6"/>';o+=s+'</svg>'}return o+(n>60?`<span>+${n-60}</span>`:'')}
+function item(create){const m=AREA_CONFIG[cur.a][cur.i],f=fld(cur.a,m);if(create&&!st.items[f])st.items[f]={t:0,e:[],h:[],x:0,c:0,m:[]};return st.items[f]}
+function calc(s){s=String(s).replace(/[x×]/gi,'*').replace(/,/g,'.').trim();if(!s||!/^[0-9+\-*/().\s]+$/.test(s))return NaN;try{const v=Function('"use strict";return('+s+')')();return isFinite(v)?v:NaN}catch{return NaN}}
+function openSheet(i){cur={a:curArea,i};const m=AREA_CONFIG[curArea][i];
+ $('sheet').innerHTML=`<div class="grab"></div><div class="sh-h"><div><b>${esc(m.nama)}</b><small>${esc(curArea)} · satuan ${m.satuan}</small></div><button class="x" id="cl">✕</button></div>
+ <div class="all" id="shAll"></div><div class="all" id="shB" style="background:#fff7e8"></div><div class="big"><b id="shT">0</b><small>total ${m.satuan}</small></div><div class="tally" id="shTl"></div>
+ <div class="tap"><button class="p1" data-n="1">+1</button><button data-n="5">+5</button><button data-n="10">+10</button><button data-n="50">+50</button></div>
+ <div class="row"><button class="btn2" id="m1">−1</button><button class="btn2" id="und">↩ Undo</button><button class="btn2" id="zr">Stok 0</button></div>
+ <div class="lbl">Tambah per pallet / rak (boleh rumus, mis. 12*24+6)</div>
+ <div class="row"><input id="lot" inputmode="decimal" placeholder="mis. 12*24+6"><button class="btn" id="addLot">+ Tambah</button></div><div class="lots" id="shL"></div>
+ <div class="lbl">Kedatangan / stok masuk sejak opname terakhir (${m.satuan})</div><div class="row"><input id="mk" inputmode="decimal" placeholder="mis. 20*50"><button class="btn" style="background:var(--ok)" id="addMk">+ Masuk</button></div><div class="lots" id="shM"></div><div class="lbl">Rusak / reject / waste (${m.satuan})</div><div class="row"><input id="rj" type="number" min="0" inputmode="decimal" placeholder="0"></div>
+ <div class="nx"><button class="btn2" id="rs">Reset item</button><button class="btn" id="nx">Simpan &amp; berikutnya ➜</button></div>`;
+ $('bk').classList.add('on');$('sheet').classList.add('on');
+ const upd=()=>{const it=item(false);const lc=locsOf(m.nama),ts=lc.reduce((s,l)=>s+l.v,0);$('shAll').innerHTML=`Total semua lokasi: <b>${fmt(ts)}</b> ${m.satuan}<br>${lc.map(l=>`${l.a===cur.a?'<b>'+esc(l.a)+'</b>':esc(l.a)}: ${l.c?fmt(l.v):'belum'}`).join(' · ')}`;$('shT').textContent=it&&it.c?fmt(tot(it)):'0';$('shTl').innerHTML=it?tally(it.t||0):'';$('shL').innerHTML=it&&it.e?it.e.map((v,k)=>`<span class="lot">${fmt(v)}<button data-k="${k}">✕</button></span>`).join(''):'';$('rj').value=it&&it.x?it.x:'';{const f=fld(cur.a,m),L=LAST[f],mv=mk_(it),fs=it&&it.c?tot(it):null;$('shB').innerHTML=L?`Awal <b>${fmt(L.v)}</b> (${L.tgl}) + Masuk <b>${fmt(mv)}</b> − Fisik <b>${fs===null?'?':fmt(fs)}</b> = Terpakai <b style="color:${fs!==null&&L.v+mv-fs<0?'var(--bad)':'var(--pr)'}">${fs===null?'—':fmt(L.v+mv-fs)}</b>`:'Belum ada stok awal. Opname ini jadi acuan pertama.';$('shM').innerHTML=it&&it.m?it.m.map((v,k)=>`<span class="lot" style="background:#e2f6e9;color:#1d6b3f">+${fmt(v)}<button data-q="${k}">✕</button></span>`).join(''):'';$('shM').querySelectorAll('button').forEach(b=>b.onclick=()=>{item(true).m.splice(+b.dataset.q,1);save();upd()})};$('shL').querySelectorAll('button').forEach(b=>b.onclick=()=>{const it=item(true);it.e.splice(+b.dataset.k,1);it.c=1;save();upd()})};
+ const hist=(k,v)=>{const it=item(true);it.c=1;it.h.push({k,v});if(it.h.length>300)it.h.shift()};
+ document.querySelectorAll('.tap button').forEach(b=>b.onclick=()=>{const it=item(true),n=+b.dataset.n;it.t+=n;hist('t',n);vib();save();upd()});
+ $('m1').onclick=()=>{const it=item(true);if(it.t>0){it.t--;hist('t',-1);vib();save();upd()}};
+ $('und').onclick=()=>{const it=item(false);if(!it||!it.h.length)return;const h=it.h.pop();if(h.k==='t')it.t=Math.max(0,it.t-h.v);else it.e.pop();save();upd()};
+ $('zr').onclick=()=>{const it=item(true);it.t=0;it.e=[];it.h=[];it.c=1;save();upd()};
+ $('addLot').onclick=()=>{const v=calc($('lot').value);if(isNaN(v)||v<=0){toast('Isi angka / rumus yang valid','err');return}const it=item(true);it.e.push(v);hist('e',v);$('lot').value='';vib();save();upd()};
+ $('addMk').onclick=()=>{const v=calc($('mk').value);if(isNaN(v)||v<=0){toast('Isi angka kedatangan yang valid','err');return}const it=item(true);it.m=it.m||[];it.m.push(v);$('mk').value='';save();upd()};
+ $('lot').onkeydown=e=>{if(e.key==='Enter')$('addLot').click()};
+ $('rj').onchange=e=>{const it=item(true),v=parseFloat(e.target.value);it.x=isNaN(v)||v<0?0:v;it.c=1;save()};
+ $('rs').onclick=()=>{if(confirm('Reset item ini?')){delete st.items[fld(cur.a,AREA_CONFIG[cur.a][cur.i])];save();upd()}};
+ $('nx').onclick=()=>{const it=item(false);if(it&&!it.c&&(it.t||it.e.length||it.h.length))it.c=1;if(view!=='area'){closeSheet();return}const ids=listIdx(),p=ids.indexOf(cur.i);closeSheet();if(p>=0&&ids[p+1]!==undefined)openSheet(ids[p+1])};
+ $('cl').onclick=closeSheet;upd();
+ if(navigator.wakeLock)navigator.wakeLock.request('screen').catch(()=>{});
+}
+function openNew(){
+ $('sheet').innerHTML=`<div class="grab"></div><div class="sh-h"><b>＋ Material / varian baru</b><button class="x" id="cl">✕</button></div>
+ <div class="lbl">Nama material (mis. POUCH YB 77G VARIAN BARU)</div><div class="row"><input id="nn" style="text-transform:uppercase" placeholder="NAMA MATERIAL"></div>
+ <div class="lbl">Satuan</div><div class="row"><select id="ns" style="flex:1;border:1.5px solid var(--bd);border-radius:14px;padding:12px;background:#fafbff">${['PCS','ROL','KG','LBR','PAK'].map(s=>`<option>${s}</option>`).join('')}</select></div>
+ <div class="lbl">Ada di area mana?</div><div class="lots">${AREAS.map(a=>`<label class="lot" style="padding:8px 12px"><input type="checkbox" class="na" value="${esc(a)}" ${a===curArea?'checked':''}> ${esc(a)}</label>`).join('')}</div>
+ <div class="nx"><button class="btn2" id="nc">Batal</button><button class="btn" id="ny">Simpan material</button></div>`;
+ $('bk').classList.add('on');$('sheet').classList.add('on');$('cl').onclick=$('nc').onclick=closeSheet;
+ $('ny').onclick=()=>{const nama=$('nn').value.trim().toUpperCase().replace(/\s+/g,' '),sat=$('ns').value,ar=[...document.querySelectorAll('.na:checked')].map(x=>x.value);
+  if(!nama||!ar.length){toast('Isi nama & pilih minimal 1 area','err');return}
+  ar.forEach(a=>{addMat(a,nama,sat);(st.custom[a]=st.custom[a]||[]).push({nama,satuan:sat})});save();
+  const fd=new FormData();fd.append('action','addMaterial');fd.append('nama',nama);fd.append('satuan',sat);fd.append('area',JSON.stringify(ar));
+  fetch(SCRIPT_URL.trim(),{method:'POST',body:fd}).catch(()=>{});toast('✅ Material ditambahkan','ok');closeSheet()};
+}
+function closeSheet(){$('bk').classList.remove('on');$('sheet').classList.remove('on');if(view==='area'){fillList();const n=AREA_CONFIG[curArea].length;rAreaRing()}else render()}
+function rAreaRing(){const t=document.querySelector('#v-area .top-row .ring');if(t){const n=AREA_CONFIG[curArea].length;t.outerHTML=ring(n?cnt(curArea)/n:0,52,'#fff')}}
+$('bk').onclick=closeSheet;
+function rReview(){
+ const T=totalAll(),D=doneAll();let rj=0;Object.values(st.items).forEach(it=>rj+=it.x||0);
+ $('v-review').innerHTML=`<div class="top"><div class="top-row"><button class="back" id="bk2">←</button><h1>Review &amp; Kirim</h1></div></div><div class="stats"><div class="stat"><b style="color:var(--ok)">${D}</b><span>Dihitung</span></div><div class="stat"><b style="color:var(--bad)">${T-D}</b><span>Belum</span></div><div class="stat"><b>${fmt(rj)}</b><span>Total rusak</span></div></div>${AREAS.map(a=>{const un=AREA_CONFIG[a].map((m,i)=>[m,i]).filter(([m])=>!done(a,m));return `<div class="card"><h3><span>${esc(a)}</span><span>${cnt(a)}/${AREA_CONFIG[a].length}</span></h3>${un.length?`<details><summary style="color:var(--tx2);font-size:13px">${un.length} belum dihitung</summary><ul>${un.map(([m,i])=>`<li><a href="#" data-a="${esc(a)}" data-i="${i}">${esc(m.nama)}</a></li>`).join('')}</ul></details>`:'<small style="color:var(--ok)">✓ Semua sudah dihitung</small>'}</div>`}).join('')}<div class="acts"><button class="btn" id="snd" style="background:var(--pr)">📤 Simpan ke Google Drive</button><button class="btn" id="csv" style="background:var(--ok)">⬇ Unduh CSV (cadangan)</button><button class="btn2" id="clr" style="padding:14px">🗑️ Hapus semua data</button></div>`;
+ $('bk2').onclick=()=>go('home');document.querySelectorAll('#v-review a').forEach(a=>a.onclick=e=>{e.preventDefault();curArea=a.dataset.a;cat='SEMUA';q='';todo=false;show('area');rArea();openSheet(+a.dataset.i)});$('snd').onclick=submit;$('csv').onclick=exportCsv;$('clr').onclick=()=>{if(confirm('Hapus SEMUA data opname di perangkat ini?')){st={nama:st.nama,tanggal:today(),items:{},custom:st.custom,shift:st.shift};save();toast('Data dihapus','ok');go('home')}};
+}
+async function submit(){
+ if(!st.nama){toast('Isi nama pelaksana dulu','err');return}
+ const un=totalAll()-doneAll();if(un&&!confirm(`${un} item belum dihitung dan tidak ikut terkirim. Lanjut kirim?`))return;
+ const b=$('snd');b.disabled=true;b.textContent='Menyimpan…';
+ try{
+  const entries=[];
+  AREAS.forEach(a=>AREA_CONFIG[a].forEach(m=>{const f=fld(a,m),it=st.items[f];if(!it||!it.c)return;const stok=fmt(tot(it)),masuk=mk_(it),rusak=it.x||0,L=LAST[f],stokAwal=L?Number(L.v):0,terpakai=L?fmt(stokAwal+masuk-stok):null;entries.push({area:a,material:m.nama,satuan:m.satuan,stokAwal,masuk,stokAkhir:stok,terpakai,rusak,tally:it.t||0,lot:it.e||[]})}));
+  const data={type:'STOCK_OPNAME',version:'1.0',sessionId:`OPN-${st.tanggal.replace(/-/g,'')}-S${st.shift}-${Date.now()}`,savedAt:new Date().toISOString(),header:{tanggal:st.tanggal,shift:String(st.shift),pelaksana:st.nama},summary:{totalMaterial:entries.length,totalMasuk:entries.reduce((s,x)=>s+Number(x.masuk||0),0),totalStok:entries.reduce((s,x)=>s+Number(x.stokAkhir||0),0),totalTerpakai:entries.reduce((s,x)=>s+Number(x.terpakai||0),0),totalRusak:entries.reduce((s,x)=>s+Number(x.rusak||0),0)},entries};
+  const result=await saveOpnameToDrive(data);
+  st.sent=Date.now();entries.forEach(x=>{const key=fld(x.area,{nama:x.material});LAST[key]={v:x.stokAkhir,tgl:st.tanggal,shift:st.shift}});localStorage.setItem('opname_last',JSON.stringify(LAST));save();toast(`✅ Tersimpan: ${result.fileName}`,'ok');
+  setTimeout(()=>{if(confirm('Terkirim. Mulai periode opname baru?')){st.items={};save();go('home')}},600);
+ }catch(err){console.error(err);setDriveStatus('error');toast('❌ Gagal ke Google Drive: '+err.message+'\nData tetap aman di perangkat.','err');}
+ finally{b.disabled=false;b.textContent='📤 Simpan ke Google Drive'}
+}
+function exportCsv(){const rows=[['Tanggal','Pelaksana','Area','Material','Shift','Satuan','Awal','Masuk','Stok','Terpakai','Rusak']];AREAS.forEach(a=>AREA_CONFIG[a].forEach(m=>{const it=st.items[fld(a,m)];if(it&&it.c){const L=LAST[fld(a,m)];rows.push([st.tanggal,st.nama,a,m.nama,st.shift,m.satuan,L?L.v:'',mk_(it),fmt(tot(it)),L?fmt(L.v+mk_(it)-tot(it)):'',it.x||0])}}));const csv='\ufeff'+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`Opname_${st.tanggal}_Shift${st.shift}.csv`;a.click()}
+render();syncRemote();</script>
+</body>
+</html>
