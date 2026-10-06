@@ -291,8 +291,8 @@ const fld=(a,m)=>`opname_${a}_${cleanMaterialName(m.nama)}`;
 function cleanMaterialName(n){return normalizeMaterialName(n).replace(/ /g,'_').replace(/\//g,'per').replace(/[^a-zA-Z0-9_,]/g,'').toLowerCase()}
 const tot=it=>it?(it.t||0)+(it.e||[]).reduce((a,b)=>a+b,0):0;
 const mk_=it=>it&&it.m?it.m.reduce((a,b)=>a+b,0):0;
-function addMat(a,nama,satuan){if(!AREA_CONFIG[a])return;const k=cleanMaterialName(nama);if(AREA_CONFIG[a].some(x=>cleanMaterialName(x.nama)===k))return;AREA_CONFIG[a].push({nama,satuan,baru:1})}
-Object.entries(st.custom).forEach(([a,l])=>l.forEach(x=>addMat(a,x.nama,x.satuan)));
+function addMat(a,nama,satuan,mid){if(!AREA_CONFIG[a])return;const k=cleanMaterialName(nama);const ex=AREA_CONFIG[a].find(x=>cleanMaterialName(x.nama)===k);if(ex){if(mid)ex.mid=mid;if(satuan)ex.satuan=satuan;return}AREA_CONFIG[a].push({nama,satuan,mid:mid||'',baru:1})}
+Object.entries(st.custom).forEach(([a,l])=>l.forEach(x=>addMat(a,x.nama,x.satuan,x.mid)));
 let LAST={};try{LAST=JSON.parse(localStorage.getItem('opname_last'))||{}}catch{}
 async function apiGet(action, params={}){
  const u=new URL(SCRIPT_URL);u.searchParams.set('action',action);Object.entries(params).forEach(([k,v])=>{if(v!==''&&v!=null)u.searchParams.set(k,v)});
@@ -307,6 +307,14 @@ async function checkBackend(){
  el.textContent='● Menghubungkan...';el.className='backend-status loading';
  try{const j=await apiGet('health');el.textContent='● Drive terhubung';el.className='backend-status ok';return j}
  catch(e){el.textContent='● Drive belum terhubung';el.className='backend-status bad';return null}
+}
+
+async function syncMasterMaterials(){
+ try{
+  const j=await apiGet('materials');
+  (j.materials||[]).filter(x=>x.aktif!==false).forEach(x=>addMat(x.area,x.nama,x.satuan,x.mid));
+  render();
+ }catch(e){console.warn('Master material belum tersinkron',e)}
 }
 const fmt=n=>Math.round(n*100)/100;
 const done=(a,m)=>{const it=st.items[fld(a,m)];return !!(it&&it.c)};
@@ -439,7 +447,7 @@ async function submit(){
    if(!it||!it.c)return;
    const L=LAST[f],stokAwal=L?Number(L.v)||0:0,masuk=mk_(it),stokAkhir=tot(it),rusak=Number(it.x)||0;
    entries.push({
-     area:a,material:m.nama,nama:m.nama,satuan:m.satuan,
+     mid:String(m.mid||''),area:a,material:m.nama,nama:m.nama,satuan:m.satuan,
      stokAwal,masuk,stokAkhir,terpakai:stokAwal+masuk-stokAkhir,rusak,
      tally:Number(it.t)||0,lot:Array.isArray(it.e)?it.e:[]
    });
@@ -472,7 +480,7 @@ function exportCsv(){
  const csv='\ufeff'+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`Opname_${st.tanggal}.csv`;a.click();
 }
-render();checkBackend();
+render();checkBackend().then(()=>syncMasterMaterials());
 </script>
 </body>
 </html>
