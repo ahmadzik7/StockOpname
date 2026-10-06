@@ -299,7 +299,7 @@ async function apiGet(action, params={}){
  const r=await fetch(u.toString(),{method:'GET',cache:'no-store'});
  if(!r.ok) throw new Error('HTTP '+r.status);
  const j=await r.json();
- if(j.status && j.status!=='ok') throw new Error(j.message||'API error');
+ if(j.status && j.status!=='ok') throw new Error(j.message||j.msg||'API error');
  return j;
 }
 async function checkBackend(){
@@ -309,12 +309,38 @@ async function checkBackend(){
  catch(e){el.textContent='● Drive belum terhubung';el.className='backend-status bad';return null}
 }
 
+const MASTER_CACHE='stock_opname_master_cache';
+function applyMaster(list){
+ let n=0;
+ (list||[]).filter(x=>x&&x.aktif!==false).forEach(x=>{
+  const nama=String(x.nama||'').trim();if(!nama)return;
+  const area=String(x.area||'').trim();
+  if(area){
+   // AREA diisi di sheet: pakai area itu (dibuat otomatis kalau belum ada)
+   const key=AREAS.find(a=>a.toLowerCase()===area.toLowerCase())||area;
+   if(!AREA_CONFIG[key]){AREA_CONFIG[key]=[];AREAS.push(key)}
+   addMat(key,nama,x.satuan,x.mid);n++;
+  }else{
+   // AREA kosong: lengkapi MID/OUM di material bernama sama; kalau belum ada di area mana pun -> "Lainnya"
+   const k=cleanMaterialName(nama);let hit=false;
+   AREAS.forEach(a=>AREA_CONFIG[a].forEach(m=>{if(cleanMaterialName(m.nama)===k){if(x.mid)m.mid=x.mid;if(x.satuan)m.satuan=x.satuan;hit=true}}));
+   if(!hit){const a='Lainnya';if(!AREA_CONFIG[a]){AREA_CONFIG[a]=[];AREAS.push(a)}addMat(a,nama,x.satuan,x.mid)}
+   n++;
+  }
+ });
+ return n;
+}
 async function syncMasterMaterials(){
  try{
   const j=await apiGet('materials');
-  (j.materials||[]).filter(x=>x.aktif!==false).forEach(x=>addMat(x.area,x.nama,x.satuan,x.mid));
+  const list=j.materials||[];
+  applyMaster(list);
+  try{localStorage.setItem(MASTER_CACHE,JSON.stringify(list))}catch{}
   render();
- }catch(e){console.warn('Master material belum tersinkron',e)}
+ }catch(e){
+  console.warn('Master material belum tersinkron, pakai cache terakhir',e);
+  try{const c=JSON.parse(localStorage.getItem(MASTER_CACHE));if(c&&c.length){applyMaster(c);render()}}catch{}
+ }
 }
 const fmt=n=>Math.round(n*100)/100;
 const done=(a,m)=>{const it=st.items[fld(a,m)];return !!(it&&it.c)};
@@ -459,7 +485,7 @@ async function submit(){
    const r=await fetch(SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
    if(!r.ok)throw new Error('HTTP '+r.status);
    const j=await r.json();
-   if(j.status&&j.status!=='ok')throw new Error(j.message||'Gagal menyimpan');
+   if(j.status&&j.status!=='ok')throw new Error(j.message||j.msg||'Gagal menyimpan');
    st.sent=Date.now();
    entries.forEach(x=>{const f=fld(x.area,{nama:x.material});LAST[f]={v:x.stokAkhir,tgl:st.tanggal,shift:st.shift}});
    try{localStorage.setItem('opname_last',JSON.stringify(LAST))}catch{}
@@ -480,6 +506,7 @@ function exportCsv(){
  const csv='\ufeff'+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`Opname_${st.tanggal}.csv`;a.click();
 }
+try{const c=JSON.parse(localStorage.getItem(MASTER_CACHE));if(c&&c.length)applyMaster(c)}catch{}
 render();checkBackend().then(()=>syncMasterMaterials());
 </script>
 </body>
